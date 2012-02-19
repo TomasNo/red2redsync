@@ -9,7 +9,7 @@ class Sync1Controller < ApplicationController
   def projsync
 		error_message=nil
 	
-
+		#form processing
 		adress = params["nil_class"]["adress"]
 		project_id = params["nil_class"]["project_id"]
 		
@@ -19,9 +19,7 @@ class Sync1Controller < ApplicationController
 			return 1
 		end
 
-#zacatek wiki, neni doladen prevod vseho hlavne zarazky a cislovani a asi vicenasobny vyskyt odkazu
-#pokud neni wiki melo by se pokracovat v synchronizaci ostatnich udaju TODO , god know how to do this fuck...
-
+#pro wiki neni podpora rest api => parsovani webu, zacatek wiki
 		begin
 		page=open("http://demo.redmine.org/projects/ahojda/wiki").read
 		rescue =>error
@@ -32,14 +30,11 @@ class Sync1Controller < ApplicationController
 
 	#ziskani adresy k ziskani priloh a datum vytvoreni, abychom overili, ze se jedna o novejsi soubor
 		attachments_content=page.scan(/<div class="attachments">.*?<\/div>/m)
-	#	attachments_date=attachments_content.collect{|x| x=x.scan(/<span class="author">.*?,.*?<\/span>/)}
-	#	attachments_date[0].collect!{|x| x.gsub!(/<.*?>.*?,* /,'')}   
-	# datum zyskam z rest api a stejne i vse ostatni KURVA! :D	
+	# datum zyskam z rest api a stejne i vse ostatni 	
 	#pokud jsou nejake prilohy	
 	if(attachments_content[0]!=nil)
 			attachments_content.collect!{ |x| x=x.scan(/\/attachments\/.*?\/.*?" class/)} 
 			attachments_id=attachments_content[0].collect{|x| x=x.scan(/\/[0-9]*\//)}
-		#z nejakeho duvodu se to tady musi prevest na string dont know why :o)
 			attachments_id.collect!{|x| x=x.to_s}
 				attachments_id.collect!{|x| 
 				x=x.gsub(/\//,'')}
@@ -69,7 +64,6 @@ class Sync1Controller < ApplicationController
     					saved_file.write(read_file.read)
   					end
 					end
-			puts "souborovy sync"
 					#prehrani dat do tabulky o soboru , zmena created_on a filesize, description ... hash?...diskfilename?..
 					actual_attach.filesize=x["attachment"]["filesize"].to_i
 					actual_attach.description=x["attachment"]["description"]
@@ -81,7 +75,6 @@ class Sync1Controller < ApplicationController
 					actual_attach.digest=Digest::MD5.hexdigest(File.read("files/#{actual_attach["disk_filename"]}")).to_s
 				
         	if !(actual_attach.save)
-						puts "piice"
 						flash[:error]="File #{actual_attach["disk_filename"]} hasn't been updated"
 					end
 
@@ -94,8 +87,8 @@ class Sync1Controller < ApplicationController
 		
 
 #overime si aktualnost wikipedie, ma se vubec aktualizovat
+#opet parsing webu
 		history=open("http://demo.redmine.org/projects/ahojda/wiki/Wiki/history").read
-			
 		history=history.scan(/<td class="updated_on">.*?<\/td>/)
 		
 		history[0].gsub!(/<.*?>/,'')
@@ -113,7 +106,6 @@ class Sync1Controller < ApplicationController
 		#spusteni synchronizace pokud se na webu naleza nejnovejsi verze	
 		if (wiki==nil || history[0] > wiki_update.strftime("%m%d%Y%H%M"))
 #wik_attachments
-			puts "wikisynchasbegun"
 			wiki_content=page.scan(/<div class="wiki wiki-page">.*?<\/div>/m)
 
 #nahrazeni nadpisu za h[123]. a taky prevod na string
@@ -175,7 +167,7 @@ class Sync1Controller < ApplicationController
 			#wiki["comments"]=wiki_commment
 			wiki["updated_on"]=Time.current		
 			if (!(wiki.save))
-				error_message="Hmm wiki se nam neulozila"
+				error_message="Wiki hasn't been saved"
 			end
 		end
 #konec spracovani wiki
@@ -260,14 +252,11 @@ class Sync1Controller < ApplicationController
    		target_issue["is_private"]=false #zatim falseissues["issues"][i]["is_private"]
 			puts i	
 			if(!(target_issue.save)) 
-			 flash[:error]="fuck thaht shit"
+			 flash[:error]="Issues havent been synchronized"
 				break
 			end
 		end		
 	}
-				#	nejsou tu vsechny, nektere nejsou pristupne skrze rest api nebo se spatne vyparsovali
-				#	 tady odecitam od velikosti issue, aby se aktualizovali, ty co uz jsou a vytvorili uplne nove
-				#ted by se meli vytvorit nove polozky a  mozna smazat prebytecne <= prodiskutovat
 				
 
 			redirect_to :action => 'index'

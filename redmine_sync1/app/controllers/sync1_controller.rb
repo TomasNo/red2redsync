@@ -189,17 +189,17 @@ class Sync1Controller < ApplicationController
 			target_issue=Issue.find_by_subject_and_project_id(x["subject"],project.id)	
 			
 			#porovnani data , mali dojit k synchronizaci
-			if (target_issue==nil | target_issue.updated_on.strftime("%s")<x["updated_on"].strftime("%s"))
+			if (target_issue==nil || target_issue.updated_on.strftime("%s")<x["updated_on"].strftime("%s"))
 				if (target_issue==nil)
 					target_issue=Issue.new
 					target_issue.id=Issue.find(:last).id+1
 				end
 
 			#souborovy sync k issue 
-				issue_attachments=open("http://demo.redmine.org/issue/#{target_issue.id}.json?include=attachments&limit=100").read
+				issue_attachments=open("http://demo.redmine.org/issues/#{target_issue.id}.json?include=attachments&limit=100").read
 				issue_attachments=JSON.parse(issue_attachments)
 				issue_attachments=issue_attachments["attachments"]
-				issues_attachments.collect{|x| 
+				issue_attachments.collect{|x| 
 					server_att=Attachment.find_by_container_type_and_container_id_and_filename("Issue",project.id,x["filename"])
 					
 					if (server_att==nil || server_att.created_on.strftime.strftime("%s") < x["created_on"].strftime("%s"))
@@ -232,8 +232,9 @@ class Sync1Controller < ApplicationController
 								puts "piice"
 							flash[:error]="File #{server_att["disk_filename"]} hasn't been updated"
 						end
+					end
 
-			}
+				}
 					
 			
 			target_issue["tracker_id"]=issues["issues"][i]["tracker"]["id"] if issues["issues"][i]["tracker"]
@@ -262,14 +263,14 @@ class Sync1Controller < ApplicationController
 			 flash[:error]="fuck thaht shit"
 				break
 			end
-		end 
+		end		
 	}
 				#	nejsou tu vsechny, nektere nejsou pristupne skrze rest api nebo se spatne vyparsovali
 				#	 tady odecitam od velikosti issue, aby se aktualizovali, ty co uz jsou a vytvorili uplne nove
 				#ted by se meli vytvorit nove polozky a  mozna smazat prebytecne <= prodiskutovat
 				
-	end
+
 			redirect_to :action => 'index'
+	end
+
 end
-
-

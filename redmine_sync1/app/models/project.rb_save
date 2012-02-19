@@ -1,0 +1,6 @@
+require 'rubygems'
+require 'active_resource'
+
+
+class Project1 < ActiveResource::Base
+end

@@ -1,0 +1,23 @@
+<h2 align="center">Plugin prm synchronizaci projektu</h2>
+
+<% form_for @project, :url => { :action => "projsync" }, :html => {:class => "nifty_form"}, :method=>"projsync" do |f| %>
+	<div class="field">
+		<%= f.label :adress, "Zadejte adresu redmine" %>
+		<%= f.text_field :adress %> <br />
+	</div>
+	<div class="field">
+		<%= f.label :name, "Zadejte uzivatelske jmeno" %>
+		<%= f.text_field :name %> <br />
+	</div>	
+	<div class="field">
+	<%= f.label :password , "Zadejte heslo" %>
+		<%= f.password_field :password %> <br />
+</div>
+<div class="field">
+	 	<%= f.label :project_name, "Zadejte nazev projektu" %>
+		<%= f.text_field :project_name %> <br />		
+</div>
+<div class="actions">
+	<%= f.submit "Potvrdit" %>
+</div>
+<% end %>

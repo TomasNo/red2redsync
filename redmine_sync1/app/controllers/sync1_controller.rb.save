@@ -1,0 +1,18 @@
+class Sync1Controller < ApplicationController
+  unloadable
+
+
+  def index
+	
+	end
+
+  def projsync
+	neco=params[:name]
+	if neco!= nil
+		@project=Project.find_by_name(neco)
+	else
+		puts "tohle se moc nepovedlo, co ?:D "
+	end
+
+  end
+end

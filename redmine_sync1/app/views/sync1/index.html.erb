@@ -1,0 +1,15 @@
+<h2 align="center">Plugin prm synchronizaci projektu</h2>
+
+<% form_for @project, :url => { :action => "projsync" }, :html => {:class => "nifty_form"}, :method=>"post" do |f| %>
+	<div class="field">
+		<%= f.label :adress, "Insert another redmine adress" %>
+		<%= f.text_field :adress %> <br />
+	</div>
+	<div class="field">
+		<%= f.label :project_id, "Insert project indentifier" %>
+		<%= f.text_field :project_id %> <br />
+	</div>	
+	<div class="actions">
+	<%= f.submit "Submit" %>
+</div>
+<% end %>

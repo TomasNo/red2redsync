@@ -175,8 +175,6 @@ class Sync1Controller < ApplicationController
 		content=open("http://demo.redmine.org/projects/ahojda/issues.json?limit=100").read
 		issues=JSON.parse(content)
 #otevrel se a vyparsoval obejkt s issue
-#tady se nalezne project, ziskam jeho id a k nemu navazane issue abych je mohl synchronizovat
-		
 		issues["issues"].collect{|x|
 			target_issue=Issue.find_by_subject_and_project_id(x["subject"],project.id)	
 			
@@ -188,75 +186,76 @@ class Sync1Controller < ApplicationController
 				end
 
 			#souborovy sync k issue 
-				issue_attachments=open("http://demo.redmine.org/issues/#{target_issue.id}.json?include=attachments&limit=100").read
+				issue_attachments=open("http://demo.redmine.org/issues/#{x["id"]}.json?include=attachments&limit=100").read
+				
 				issue_attachments=JSON.parse(issue_attachments)
 				issue_attachments=issue_attachments["attachments"]
-				issue_attachments.collect{|x| 
-					server_att=Attachment.find_by_container_type_and_container_id_and_filename("Issue",project.id,x["filename"])
-					
-					if (server_att==nil || server_att.created_on.strftime.strftime("%s") < x["created_on"].strftime("%s"))
+				if (issue_attachments!=nil)
+					issue_attachments.collect{|x| 
+						server_att=Attachment.find_by_container_type_and_container_id_and_filename("Issue",project.id,x["filename"])
+						
+						if (server_att==nil || server_att.created_on.strftime.strftime("%s") < x["created_on"].strftime("%s"))
 
-						if server_att==nil
-							time=Time.current
-							source_file=time.strftime("%s_"+x["filename"])
-							server_att=Attachment.new
-							server_att.id=Attachment.find(:last).id+1
-							server_disk_filename=source_file
-						else
-							source_file=server_att.disk_filename
-						end
-				
-						File.open("files/"+source_file, "wb") do |saved_file|
-  						open(x["content_url"]) do |read_file|
-    						saved_file.write(read_file.read)
-  						end
-						end
-					 	server_att.filesize=x["filesize"].to_i
-						server_att.description=x["description"]
-						server_att.content_type=x["content_type"]
-						server_att.container_type=x["container_type"]
-						server_att.container_id=project.id
-						server_att.author_id=User.current.id
-						#vypocet hash			
-						server_att.digest=Digest::MD5.hexdigest(File.read("files/#{server_att["disk_filename"]}")).to_s
+							if server_att==nil
+								time=Time.current
+								source_file=time.strftime("%s_"+x["filename"])
+								server_att=Attachment.new
+								server_att.id=Attachment.find(:last).id+1
+								server_disk_filename=source_file
+							else
+								source_file=server_att.disk_filename
+							end
 					
+							File.open("files/"+source_file, "wb") do |saved_file|
+  							open(x["content_url"]) do |read_file|
+    							saved_file.write(read_file.read)
+  							end
+							end
+						 	server_att.filesize=x["filesize"].to_i
+							server_att.description=x["description"]
+							server_att.content_type=x["content_type"]
+							server_att.container_type=x["container_type"]
+							server_att.container_id=project.id
+							server_att.author_id=User.current.id
+							#vypocet hash			
+							server_att.digest=Digest::MD5.hexdigest(File.read("files/#{server_att["disk_filename"]}")).to_s
+						
         		if !(server_att.save)
-								puts "piice"
-							flash[:error]="File #{server_att["disk_filename"]} hasn't been updated"
+								flash[:error]="File #{server_att["disk_filename"]} hasn't been updated"
 						end
 					end
-
 				}
 					
 			
-			target_issue["tracker_id"]=issues["issues"][i]["tracker"]["id"] if issues["issues"][i]["tracker"]
+			target_issue["tracker_id"]=x["tracker"]["id"] if x["tracker"]
 			target_issue["project_id"]=project.id
-			target_issue["subject"]=issues["issues"][i]["subject"]
-			target_issue["description"]=issues["issues"][i]["description"]
-			target_issue["status_id"]=issues["issues"][i]["status"]["id"].to_i if issues["issues"][i]["status"]
-			target_issue["assigned_to_id"]=issues["issues"][i]["assigned_to"]["id"].to_i if issues["issues"][i]["assigned_to"]
-			target_issue["priority_id"]=issues["issues"][i]["priority"]["id"].to_i if issues["issues"][i]["priority"]
-			target_issue["author_id"]=issues["issues"][i]["author"]["id"].to_i if issues["issues"][i]["author"]
-			target_issue["created_on"]=issues["issues"][i]["created_on"]
+			target_issue["subject"]=x["subject"]
+			target_issue["description"]=x["description"]
+			target_issue["status_id"]=x["status"]["id"].to_i if x["status"]
+			target_issue["assigned_to_id"]=x["assigned_to"]["id"].to_i if x["assigned_to"]
+			target_issue["priority_id"]=x["priority"]["id"].to_i if x["priority"]
+			target_issue["author_id"]=x["author"]["id"].to_i if x["author"]
+			target_issue["created_on"]=x["created_on"]
 			target_issue["updated_on"]=Time.current
-			target_issue["start_date"]=issues["issues"][i]["start_date"]
-			target_issue["done_ratio"]=issues["issues"][i]["done_ratio"]
-			target_issue["due_date"]=issues["issues"][i]["due_date"]
-			target_issue["category_id"]=issues["issues"][i]["category"]["id"].to_i  if issues["issues"][i]["category"]
-			target_issue["fixed_version"]=issues["issues"][i]["fixed_version"]
-			target_issue["estimated_hours"]=nil#zatim dame nil issues["issues"][i]["estimated_hours"]
-			target_issue["parent_id"]=issues["issues"][i]["parent"]["id"].to_i if issues["issues"][i]["parents"]
-			target_issue["root_id"]=issues["issues"][i]["root"]["id"].to_i if issues["issues"][i]["root"]
-			target_issue["lft"]=issues["issues"][i]["lft"].to_i
-			target_issue["rgt"]=issues["issues"][i]["rgt"].to_i
-   		target_issue["is_private"]=false #zatim falseissues["issues"][i]["is_private"]
-			puts i	
+			target_issue["start_date"]=x["start_date"]
+			target_issue["done_ratio"]=x["done_ratio"]
+			target_issue["due_date"]=x["due_date"]
+			target_issue["category_id"]=x["category"]["id"].to_i  if x["category"]
+			target_issue["fixed_version"]=x["fixed_version"]
+			target_issue["estimated_hours"]=nil#zatim dame nil x["estimated_hours"]
+			target_issue["parent_id"]=x["parent"]["id"].to_i if x["parents"]
+			target_issue["root_id"]=x["root"]["id"].to_i if x["root"]
+			target_issue["lft"]=x["lft"].to_i
+			target_issue["rgt"]=x["rgt"].to_i
+   		target_issue["is_private"]=false #zatim falsex["is_private"]
 			if(!(target_issue.save)) 
 			 flash[:error]="Issues havent been synchronized"
 				break
 			end
-		end		
-	}
+	end
+end
+		}
+	
 				
 
 			redirect_to :action => 'index'

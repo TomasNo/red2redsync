@@ -11,8 +11,9 @@ class Sync1Controller < ApplicationController
 	
 		#form processing
 		adress = params["nil_class"]["adress"]
-		project_id = params["nil_class"]["project_id"]
-		
+		project_identifier = params["nil_class"]["project_id"]
+		adress="http://demo.redmine.org"
+		project_identifier="ahojda"
 		project=Project.find_by_identifier("hmmtadyjenejakyindentifikacniklic")
 		if project==nil   
 			flash[:notice]="This project doesn't exist in your database"
@@ -21,7 +22,7 @@ class Sync1Controller < ApplicationController
 
 #pro wiki neni podpora rest api => parsovani webu, zacatek wiki
 		begin
-		page=open("http://demo.redmine.org/projects/ahojda/wiki").read
+		page=open(adress+"/projects/"+project_identifier+"/wiki").read
 		rescue =>error
 		flash[:error]= error.message
 		return 1
@@ -39,7 +40,7 @@ class Sync1Controller < ApplicationController
 				attachments_id.collect!{|x| 
 				x=x.gsub(/\//,'')}
 	#ziskani objektu z rest api attachments
-			attachments_object=attachments_id.collect{|x| x=open("http://demo.redmine.org/attachments/#{x}.json").read
+			attachments_object=attachments_id.collect{|x| x=open(adress+"/attachments/#{x}.json").read
 				x=JSON.parse(x)}
 	#na zaklade data dochazi k synchronizaci souboru
 			attachments_object.collect{|x| 
@@ -89,7 +90,7 @@ class Sync1Controller < ApplicationController
 
 #overime si aktualnost wikipedie, ma se vubec aktualizovat
 #opet parsing webu
-		history=open("http://demo.redmine.org/projects/ahojda/wiki/Wiki/history").read
+		history=open(adress+"/projects/"+project_identifier+"/wiki/Wiki/history").read
 		history=history.scan(/<td class="updated_on">.*?<\/td>/)
 		
 		history[0].gsub!(/<.*?>/,'')
@@ -173,20 +174,22 @@ class Sync1Controller < ApplicationController
 		end
 #konec spracovani wiki
 #zacatek spracovani issues
-		content=open("http://demo.redmine.org/projects/ahojda/issues.json?limit=100").read
+		content=open(adress+"/projects/"+project_identifier+"/issues.json?limit=100").read
 		issues=JSON.parse(content)
 #otevrel se a vyparsoval obejkt s issue
+		puts"vypis"
 		issues["issues"].collect{|x|
 			target_issue=Issue.find_by_subject_and_project_id(x["subject"],project.id)	
-				
+			puts "zacala synchronizace issue"	
 			#porovnani data , mali dojit k synchronizaci
 			if (target_issue==nil || target_issue.updated_on.strftime("%s")<x["updated_on"].strftime("%s"))
 				if (target_issue==nil)
+					puts "vytvarim nove issue"
 					target_issue=Issue.new
 					target_issue.id=Issue.find(:last).id+1
 				end
 			#souborovy sync k issue 
-				issue_attachments=open("http://demo.redmine.org/issues/#{x["id"]}.json?include=attachments&limit=100").read
+				issue_attachments=open(adress+"/issues/#{x["id"]}.json?include=attachments&limit=100").read
 				
 				issue_attachments=JSON.parse(issue_attachments)
 				issue_attachments=issue_attachments["attachments"]
@@ -214,7 +217,7 @@ class Sync1Controller < ApplicationController
 						 	server_att.filesize=x["filesize"].to_i
 							server_att.description=x["description"]
 							server_att.content_type=x["content_type"]
-							server_att.container_type=x["container_type"]
+							server_att.container_type="Issue"
 							server_att.container_id=project.id
 							server_att.author_id=User.current.id
 							#vypocet hash			
@@ -222,6 +225,8 @@ class Sync1Controller < ApplicationController
 						
         		if !(server_att.save)
 								error_message=error_message+"File #{server_att["disk_filename"]} hasn't been updated \n"
+						else
+								puts "attachment se neulozil"
 						end
 					end
 				}
@@ -250,7 +255,8 @@ class Sync1Controller < ApplicationController
    		target_issue["is_private"]=false #zatim falsex["is_private"]
 			if(!(target_issue.save)) 
 			 error_message=error_message+"Issues havent been synchronized\n"
-				break
+			else
+				puts "issue ulozeno"
 			end
 	end
 end
@@ -259,6 +265,9 @@ end
 				
 			if (error_message)!=''
 				flash[:error]=error_message
+				puts "neco se pokazilo"
+			else
+			puts "vse ok"
 			end
 			redirect_to :action => 'index'
 	end

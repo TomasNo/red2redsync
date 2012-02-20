@@ -7,7 +7,7 @@ class Sync1Controller < ApplicationController
 	end
 
   def projsync
-		error_message=nil
+		error_message=''
 	
 		#form processing
 		adress = params["nil_class"]["adress"]
@@ -44,7 +44,7 @@ class Sync1Controller < ApplicationController
 	#na zaklade data dochazi k synchronizaci souboru
 			attachments_object.collect{|x| 
 				actual_attach=Attachment.find_by_container_type_and_container_id_and_filename("WikiPage",project.id,x["attachment"]["filename"])
-				if (actual_attach == nil || actual_attach["created_on"].to_s.gsub(/\D/,'')<x["attachment"]["created_on"].gsub(/\D/,''))
+				if (actual_attach == nil || actual_attach["created_on"].strftime("%Y/%m/%d %H:%M:%S").gsub("/+.*",'')<x["attachment"]["created_on"])
 					#nahrani souboru
 					#pokud soubor jeste vubec neexistuje
 					if (actual_attach ==nil)
@@ -68,14 +68,15 @@ class Sync1Controller < ApplicationController
 					actual_attach.filesize=x["attachment"]["filesize"].to_i
 					actual_attach.description=x["attachment"]["description"]
 					actual_attach.content_type=x["attachment"]["content_type"]
-					actual_attach.container_type=x["attachment"]["container_type"]
+					actual_attach.container_type="WikiPage"
 					actual_attach.container_id=project.id
+					actual_attach.created_on=x["attachment"]["created_on"]
 					actual_attach.author_id=User.current.id
 					#vypocet hash			
 					actual_attach.digest=Digest::MD5.hexdigest(File.read("files/#{actual_attach["disk_filename"]}")).to_s
 				
         	if !(actual_attach.save)
-						flash[:error]="File #{actual_attach["disk_filename"]} hasn't been updated"
+						error_message=error_message+"File  #{actual_attach["disk_filename"]} hasn't been updated, wiki part\n"
 					end
 
 				end
@@ -167,7 +168,7 @@ class Sync1Controller < ApplicationController
 			#wiki["comments"]=wiki_commment
 			wiki["updated_on"]=Time.current		
 			if (!(wiki.save))
-				error_message="Wiki hasn't been saved"
+				error_message=error_message+"Wiki hasn't been saved\n"
 			end
 		end
 #konec spracovani wiki
@@ -177,14 +178,13 @@ class Sync1Controller < ApplicationController
 #otevrel se a vyparsoval obejkt s issue
 		issues["issues"].collect{|x|
 			target_issue=Issue.find_by_subject_and_project_id(x["subject"],project.id)	
-			
+				
 			#porovnani data , mali dojit k synchronizaci
 			if (target_issue==nil || target_issue.updated_on.strftime("%s")<x["updated_on"].strftime("%s"))
 				if (target_issue==nil)
 					target_issue=Issue.new
 					target_issue.id=Issue.find(:last).id+1
 				end
-
 			#souborovy sync k issue 
 				issue_attachments=open("http://demo.redmine.org/issues/#{x["id"]}.json?include=attachments&limit=100").read
 				
@@ -221,7 +221,7 @@ class Sync1Controller < ApplicationController
 							server_att.digest=Digest::MD5.hexdigest(File.read("files/#{server_att["disk_filename"]}")).to_s
 						
         		if !(server_att.save)
-								flash[:error]="File #{server_att["disk_filename"]} hasn't been updated"
+								error_message=error_message+"File #{server_att["disk_filename"]} hasn't been updated \n"
 						end
 					end
 				}
@@ -249,7 +249,7 @@ class Sync1Controller < ApplicationController
 			target_issue["rgt"]=x["rgt"].to_i
    		target_issue["is_private"]=false #zatim falsex["is_private"]
 			if(!(target_issue.save)) 
-			 flash[:error]="Issues havent been synchronized"
+			 error_message=error_message+"Issues havent been synchronized\n"
 				break
 			end
 	end
@@ -257,7 +257,9 @@ end
 		}
 	
 				
-
+			if (error_message)!=''
+				flash[:error]=error_message
+			end
 			redirect_to :action => 'index'
 	end
 
